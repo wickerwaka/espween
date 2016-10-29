@@ -17,16 +17,15 @@
 
 #define NUM_LEDS 50
 #define NUM_LETTERS 26
-#define NUM_COLORS 5
+#define NUM_COLORS 6
 
 #define PHRASE_DELAY 3000
 #define LETTER_DURATION 600
-#define SPACE_DURATION 400
+#define SPACE_DURATION 600
 #define SHORT_SPACE_DURATION 200
 
 //                                         A   B   C   D   E   F   G   H   I   J   K   L   M   N   O   P   Q   R   S   T   U   V   W   X   Y   Z
 const int letterLedIndex[NUM_LETTERS] = { 46, 45, 44, 42, 41, 40, 39, 37, 19, 21, 22, 23, 24, 25, 27, 28, 31, 14, 12, 10,  9,  8,  6,  5,  4,  1 };
-const CRGB letterColors[NUM_COLORS] = { CRGB::Red, CRGB::Yellow, CRGB::Green, CRGB::Blue, CRGB::Purple };
 
 struct Display {
   CRGB m_leds[NUM_LEDS];
@@ -34,6 +33,7 @@ struct Display {
   char m_message[128];
   unsigned long m_nextUpdate;
   unsigned int m_attractStage;
+  int m_phraseCount;
   
   Display() { }
 
@@ -41,6 +41,7 @@ struct Display {
     m_nextUpdate = 0;
     m_nextCharacterIndex = 0;
     m_attractStage = 0;
+    m_phraseCount = 0;
     FastLED.addLeds<WS2812, 0>(m_leds, NUM_LEDS);
     clearMessage();
   }
@@ -73,6 +74,7 @@ struct Display {
     Serial.printf( "Message changed: %s", m_message );
     Serial.println();
 
+    m_phraseCount = 0;
     m_nextCharacterIndex = 0;
     m_nextUpdate = millis() + 1000;
   }
@@ -92,11 +94,11 @@ struct Display {
   }
 
   void attractMode() {
-    int start = ( m_attractStage % 2 ) * 23;
-    fill_rainbow( m_leds, NUM_LEDS, 0, 23 );
-    nscale8( m_leds, NUM_LEDS, 96 );
+    int start = ( m_attractStage * 46 ) % 256;
+    fill_rainbow( m_leds, NUM_LEDS, start, 32 );
+    nscale8( m_leds, NUM_LEDS, 32 );
     FastLED.show();
-    m_nextUpdate = millis() + 1000;
+    m_nextUpdate = millis() + 1500;
     m_attractStage++;
   }
   
@@ -116,13 +118,19 @@ struct Display {
 
     int len = strlen( m_message );
     if( m_nextCharacterIndex >= len ) {
-      m_nextUpdate = ms + PHRASE_DELAY;
       m_nextCharacterIndex = 0;
+      m_phraseCount++;
+      if( m_phraseCount > 2 ) {
+        m_phraseCount = 0;
+        clearMessage();
+      }
+      m_nextUpdate = ms + PHRASE_DELAY;
     } else {
       char c = m_message[m_nextCharacterIndex];
       if( c >= 'A' && c <= 'Z' ) {
         int idx = letterLedIndex[ c - 'A' ];
-        m_leds[idx] = letterColors[ idx % NUM_COLORS ];
+        int indexToHue = 256 / NUM_COLORS;
+        hsv2rgb_rainbow( CHSV( ( idx % NUM_COLORS ) * indexToHue, 255, 255 ), m_leds[idx] );
         m_nextUpdate = ms + LETTER_DURATION;
       } else if( c == '_' ) {
         m_nextUpdate = ms + SHORT_SPACE_DURATION;
