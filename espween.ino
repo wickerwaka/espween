@@ -33,14 +33,16 @@ struct Display {
   int m_nextCharacterIndex;
   char m_message[128];
   unsigned long m_nextUpdate;
+  unsigned int m_attractStage;
   
   Display() { }
 
   void setup() {
     m_nextUpdate = 0;
     m_nextCharacterIndex = 0;
+    m_attractStage = 0;
     FastLED.addLeds<WS2812, 0>(m_leds, NUM_LEDS);
-    setMessage( "Stranger Things" );
+    clearMessage();
   }
 
   void setMessage( const String &str ) {
@@ -75,15 +77,27 @@ struct Display {
     m_nextUpdate = millis() + 1000;
   }
 
+  void clearMessage() {
+    m_message[0] = '\0';
+    m_nextUpdate = millis();
+    m_attractStage = 0;
+  }
+  
   const char *getMessage() {
     return m_message;
   }
 
   void clearAll() {
-    for( int i = 0; i < NUM_LEDS; i++ )
-    {
-      m_leds[i] = CRGB::Black;
-    }
+    fill_solid( m_leds, NUM_LEDS, CRGB::Black );
+  }
+
+  void attractMode() {
+    int start = ( m_attractStage % 2 ) * 23;
+    fill_rainbow( m_leds, NUM_LEDS, 0, 23 );
+    nscale8( m_leds, NUM_LEDS, 96 );
+    FastLED.show();
+    m_nextUpdate = millis() + 1000;
+    m_attractStage++;
   }
   
   void update() {
@@ -93,6 +107,11 @@ struct Display {
       return;
     }
 
+    if( m_message[0] == '\0' ) {
+      attractMode();
+      return;
+    }
+    
     clearAll();
 
     int len = strlen( m_message );
