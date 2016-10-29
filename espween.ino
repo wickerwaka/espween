@@ -19,7 +19,13 @@
 #define NUM_LETTERS 26
 #define NUM_COLORS 5
 
-const int letterLedIndex[NUM_LETTERS] = { 46, 45, 44, 42, 41, 40, 39, 37, 19, 21, 22, 23, 24, 25, 27, 28, 31, 14, 12, 10, 9, 8, 6, 5, 4, 1 };
+#define PHRASE_DELAY 3000
+#define LETTER_DURATION 600
+#define SPACE_DURATION 400
+#define SHORT_SPACE_DURATION 200
+
+//                                         A   B   C   D   E   F   G   H   I   J   K   L   M   N   O   P   Q   R   S   T   U   V   W   X   Y   Z
+const int letterLedIndex[NUM_LETTERS] = { 46, 45, 44, 42, 41, 40, 39, 37, 19, 21, 22, 23, 24, 25, 27, 28, 31, 14, 12, 10,  9,  8,  6,  5,  4,  1 };
 const CRGB letterColors[NUM_COLORS] = { CRGB::Red, CRGB::Yellow, CRGB::Green, CRGB::Blue, CRGB::Purple };
 
 struct Display {
@@ -39,15 +45,25 @@ struct Display {
 
   void setMessage( const String &str ) {
     char *out = m_message;
-    const char *endOut = m_message + sizeof( m_message ) - 1;
+    char prev_char = '\0';
+    const char *endOut = m_message + sizeof( m_message ) - 2;
     const char *in = str.c_str();
+    
     while( *in && out < endOut )
     {
       char c = toupper( *in );
-      if( ( c >= 'A' && c <= 'Z' ) || c == ' ' ) {
+      if( c >= 'A' && c <= 'Z' ) {
+        if( c == prev_char ) {
+          *out = '_';
+          out++;
+        }
+        *out = c;
+        out++;
+      } else if( c == ' ' ) {
         *out = c;
         out++;
       }
+      prev_char = c;
       in++;
     }
     *out = '\0';
@@ -81,16 +97,18 @@ struct Display {
 
     int len = strlen( m_message );
     if( m_nextCharacterIndex >= len ) {
-      m_nextUpdate = ms + 3000;
+      m_nextUpdate = ms + PHRASE_DELAY;
       m_nextCharacterIndex = 0;
     } else {
       char c = m_message[m_nextCharacterIndex];
       if( c >= 'A' && c <= 'Z' ) {
         int idx = letterLedIndex[ c - 'A' ];
         m_leds[idx] = letterColors[ idx % NUM_COLORS ];
-        m_nextUpdate = ms + 600;
+        m_nextUpdate = ms + LETTER_DURATION;
+      } else if( c == '_' ) {
+        m_nextUpdate = ms + SHORT_SPACE_DURATION;
       } else {
-        m_nextUpdate = ms + 400;
+        m_nextUpdate = ms + SPACE_DURATION;
       }
       
       m_nextCharacterIndex++;
